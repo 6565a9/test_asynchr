@@ -77,19 +77,15 @@ bool TCPChat::binding ( std::string & host , int port, unsigned int limit ) noex
 void TCPChat::work(void){
 	
 	while(1){
-		
+		//add_timeout();	
 		accepting();
 
 		for( auto & client : clients ){
 			
 //			std::cout << client.first << std::endl;
 //			std::cout << client.second << std::endl;
+			if( FD_ISSET( client.second.fd , &read_fds) )
 			try{
-					if( !FD_ISSET( client.second.fd , &read_fds) ){
-						//std::cout << "Client not want read" << std::endl;
-						add_timeout(client.second, client.first);
-						continue;
-					}
 					
 					std::string msg = read(client.second.fd);
 					
@@ -97,7 +93,7 @@ void TCPChat::work(void){
 						delClient(client.first);					
 						continue;
 					}
-					client.second.timeout=0;
+					//client.second.timeout=0;
 
 					auto msgs =  Util::trim(msg);
 					try{
@@ -115,13 +111,11 @@ void TCPChat::work(void){
 							write(fd, client.second.name+ ": " + msg+"\r\n");
 						
 					}
-
 					std::cout << client.first << ":" << msg << std::endl;					
 					continue;
 			}catch(std::runtime_error & err){
 				std::cerr << err.what() << std::endl;
 			}catch(...){}
-			
 		std::this_thread::sleep_for( half_of_second(1) ); //
 	}
 	update_fds();

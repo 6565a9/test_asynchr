@@ -30,11 +30,13 @@ class TCPChat : public Server{
 
 ///
 	protected:
-		void inline add_timeout(client & cli, std::string host, double timeout=0.5){
-			cli.timeout+=timeout;
-			if( cli.timeout > need_timeout ){
-				delClient(host);
-			}	
+		void inline add_timeout( double timeout=0.5 ){
+			for(auto & client : clients){
+				client.second.timeout+=timeout;
+				if( client.second.timeout > need_timeout )
+					delClient(client.first);
+					
+			}
 		}
 
 	using command_chat = bool (TCPChat::*)(client & c, const std::vector<std::string> msgs, const std::map<std::string, client> clients );
