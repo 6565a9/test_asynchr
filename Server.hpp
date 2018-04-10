@@ -4,6 +4,7 @@
 #include<chrono>
 #include<thread> // for std::this_thread::sleep_for
 #include<algorithm>
+
 #include"util.hpp"
 
 constexpr double need_timeout = 180;
@@ -76,20 +77,33 @@ class TCPChat : public Server{
 	protected:
 		void inline delClient(const std::string host){
 				try{
-					auto room_vec = rooms[clients[host].room_name];
-					auto element = std::find(room_vec.cbegin(), room_vec.cend(), clients[host].fd );
-					if(element != room_vec.cend() )
-						room_vec.erase( element );
-
 					clients.at(host);
 					
 					close(clients[host].fd);
-					
+					memset(&clients[host], 0,sizeof(clients[host]) );
+
+
 					std::cout << host << " disconnected " << std::endl;
-					clients.erase( clients.find(host) );						
+					auto it = clients.find(host);
+					if(it != clients.end()){
+					//	std::cout  << "Erase from map" << std::endl;
+						clients.erase(  it  );
+					}
+						
+										
+					
+					
+					if(clients[host].room_name.size() > 0){
+						auto room_vec = rooms[clients[host].room_name];
+						auto element = std::find(room_vec.cbegin(), room_vec.cend(), clients[host].fd );
+						if(element != room_vec.cend() )
+							room_vec.erase( element );
+						std::cout << "The user was deleted from a room" << std::endl;
+					}
 				}catch(...){}
 				update_fds();
 		}
+
 		void update_fds(void);
 	public:
 		TCPChat(std::string host, const int port, const unsigned int limit=10000):

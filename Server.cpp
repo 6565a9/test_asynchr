@@ -2,23 +2,12 @@
 
 
 
+
 void TCPChat::update_fds(void){
 				FD_ZERO(&read_fds);
 				FD_SET(m_fd, &read_fds);
 				max_fds=m_fd;
 				for(auto client : clients ){
-					
-					fd_set rfd;
-  					FD_ZERO(&rfd);
- 					FD_SET(client.second.fd, &rfd);	
-					select(client.second.fd+1, &rfd, nullptr, nullptr, nullptr);
-					if (!FD_ISSET(client.second.fd, &rfd))
-					{
-						delClient(client.first);
-						continue;
-					}	
-
-
 					FD_SET( client.second.fd , &read_fds);
 					if(client.second.fd > max_fds)
 						max_fds=client.second.fd;
@@ -41,7 +30,11 @@ void TCPChat::accepting(void)  {
 		try{
 	
 			if(newfd > 0){
-				clients.at(ipv4);
+				if( clients[ipv4].fd == 0 ){
+					std::cout << "All ok" << std::endl;
+					throw(0);
+				}
+				
 				write(newfd, "ERROR: You are already connected" );
 				close(newfd);			
 			}
@@ -89,7 +82,7 @@ bool TCPChat::binding ( std::string & host , int port, unsigned int limit ) noex
 void TCPChat::work(void){
 	
 	while(1){
-		//add_timeout();	
+		update_fds();	
 		accepting();
 
 		for( auto & client : clients ){
@@ -101,8 +94,9 @@ void TCPChat::work(void){
 					
 					std::string msg = read(client.second.fd);
 					
-					if(msg.size() == 0){
-						delClient(client.first);					
+					if(msg.size() == 0){						
+						std::cout << "Continue... " << std::endl;	
+						delClient(client.first);			
 						continue;
 					}
 					//client.second.timeout=0;
@@ -128,9 +122,9 @@ void TCPChat::work(void){
 			}catch(std::runtime_error & err){
 				std::cerr << err.what() << std::endl;
 			}catch(...){}
-		std::this_thread::sleep_for( half_of_second(1) ); //
+			std::this_thread::sleep_for( half_of_second(1) ); //
 	}
-	update_fds();
+	
 }
 
 }
