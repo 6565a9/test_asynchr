@@ -7,6 +7,18 @@ void TCPChat::update_fds(void){
 				FD_SET(m_fd, &read_fds);
 				max_fds=m_fd;
 				for(auto client : clients ){
+					
+					fd_set rfd;
+  					FD_ZERO(&rfd);
+ 					FD_SET(client.second.fd, &rfd);	
+					select(client.second.fd+1, &rfd, nullptr, nullptr, nullptr);
+					if (!FD_ISSET(client.second.fd, &rfd))
+					{
+						delClient(client.first);
+						continue;
+					}	
+
+
 					FD_SET( client.second.fd , &read_fds);
 					if(client.second.fd > max_fds)
 						max_fds=client.second.fd;
