@@ -6,6 +6,7 @@
 #include<unistd.h>
 #include<errno.h>
 #include<string.h>
+#include<sys/time.h>
 
 #include"throw.hpp"
 
@@ -70,8 +71,9 @@ class SocketTalking : public Socket{
 class Client;
 
 class Server : public SocketTalking{
+		
 		public:
-			Server(int domain=AF_INET, int type=SOCK_STREAM | SOCK_NONBLOCK, int protocol=0){
+			Server(int domain=AF_INET, int type=SOCK_STREAM, int protocol=0){
 				openSocket(domain, type, protocol);
 			}
 			virtual void accepting(void)=0;

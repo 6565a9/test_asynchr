@@ -13,6 +13,11 @@ constexpr const char login[] = "ENTER";
 
 
 class TCPChat : public Server{
+	protected:
+			fd_set read_fds;
+			int max_fds;
+	
+
 	using half_of_second = std::chrono::duration<int, std::ratio<1,2>> ;
 	struct client{
 		//client(int fd, double timeout=0):fd(fd), timeout(timeout){}
@@ -24,6 +29,13 @@ class TCPChat : public Server{
 	};
 
 ///
+	protected:
+		void inline add_timeout(client & cli, std::string host, double timeout=0.5){
+			cli.timeout+=timeout;
+			if( cli.timeout > need_timeout ){
+				delClient(host);
+			}	
+		}
 
 	using command_chat = bool (TCPChat::*)(client & c, const std::vector<std::string> msgs, const std::map<std::string, client> clients );
 ///
@@ -68,11 +80,15 @@ class TCPChat : public Server{
 						room_vec.erase( element );
 
 					clients.at(host);
+					
 					close(clients[host].fd);
+					
 					std::cout << host << " disconnected " << std::endl;
 					clients.erase( clients.find(host) );						
 				}catch(...){}
+				update_fds();
 		}
+		void update_fds(void);
 	public:
 		TCPChat(std::string host, const int port, const unsigned int limit=10000):
 			Server()
@@ -82,6 +98,8 @@ class TCPChat : public Server{
 				Throw::throw_error("Can't bind to ", host, ":", port, " ", strerror(errno) );
 			//setNonblock();
 			funcs[login] = &TCPChat::welcome_msg;
+			update_fds();
+
 		}
 	
 		void accepting(void) override;

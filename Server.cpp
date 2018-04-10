@@ -2,29 +2,60 @@
 
 
 
+void TCPChat::update_fds(void){
+				FD_ZERO(&read_fds);
+				FD_SET(m_fd, &read_fds);
+				max_fds=m_fd;
+				for(auto client : clients ){
+					FD_SET( client.second.fd , &read_fds);
+					if(client.second.fd > max_fds)
+						max_fds=client.second.fd;
+				}
+				if(  select( max_fds + 1 , &read_fds , nullptr , nullptr , nullptr) < 0)
+						Throw::throw_error("Select error");
+				std::cout << "FD Was Set" << std::endl;
+
+}
+
 void TCPChat::accepting(void)  {
-	struct sockaddr_in addr;
-	socklen_t  clientlen  = sizeof(addr);
-	int newfd = accept(m_fd, (sockaddr*)&addr, &clientlen);
+	if (FD_ISSET(m_fd, &read_fds)){ 
+		struct sockaddr_in addr;
+		socklen_t  clientlen  = sizeof(addr);
+		int newfd = accept(m_fd, (sockaddr*)&addr, &clientlen);
 
-	char ipv4[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &addr.sin_addr, ipv4, INET_ADDRSTRLEN);
+		char ipv4[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &addr.sin_addr, ipv4, INET_ADDRSTRLEN);
 
-	try{
-
-		if(newfd > 0){
-			clients.at(ipv4);
-			write(newfd, "ERROR: You are already connected" );
-			close(newfd);			
-		}
-	}catch(...){
-			clients[ipv4]={newfd};
-			std::cout << "Connection from " << ipv4 << std::endl;
-			std::cout << "Now clients: ";
-			for(auto client : clients ){
-				std::cout << client.first << std::endl;
+		try{
+	
+			if(newfd > 0){
+				clients.at(ipv4);
+				write(newfd, "ERROR: You are already connected" );
+				close(newfd);			
 			}
-	}
+		}catch(...){
+				
+				clients[ipv4]={newfd};
+				std::cout << "Connection from " << ipv4 << std::endl;
+				std::cout << "Now clients: ";
+				FD_ZERO(&read_fds);
+				FD_SET(m_fd, &read_fds);
+				
+
+				for(auto client : clients ){
+					std::cout << client.first << std::endl;
+					FD_SET( client.second.fd , &read_fds);
+					if(client.second.fd > max_fds)
+						max_fds=client.second.fd;
+				}
+
+				
+				
+				if(  select( max_fds + 1 , &read_fds , nullptr , nullptr , nullptr) < 0)
+						Throw::throw_error("Select error");
+				std::cout << "FD Was Set" << std::endl;
+		}
+	}//..
 
 
 
@@ -38,21 +69,30 @@ bool TCPChat::binding ( std::string & host , int port, unsigned int limit ) noex
 	addr.sin_port = htons(port);
 	addr.sin_addr = { inet_addr(host.c_str()) };
 	int res = bind( m_fd, (struct sockaddr *) &addr, sizeof(addr) ) ;
-	listen(m_fd, limit);	
+	if( listen(m_fd, limit) < 0) return false;	
 	return res >= 0 ;
 	
 }
 
 void TCPChat::work(void){
+	
 	while(1){
+		
 		accepting();
 
 		for( auto & client : clients ){
+			
 //			std::cout << client.first << std::endl;
 //			std::cout << client.second << std::endl;
 			try{
+					if( !FD_ISSET( client.second.fd , &read_fds) ){
+						//std::cout << "Client not want read" << std::endl;
+						add_timeout(client.second, client.first);
+						continue;
+					}
+					
 					std::string msg = read(client.second.fd);
-
+					
 					if(msg.size() == 0){
 						delClient(client.first);					
 						continue;
@@ -78,12 +118,13 @@ void TCPChat::work(void){
 
 					std::cout << client.first << ":" << msg << std::endl;					
 					continue;
+			}catch(std::runtime_error & err){
+				std::cerr << err.what() << std::endl;
 			}catch(...){}
-			client.second.timeout+=0.5;
-			if( client.second.timeout > need_timeout ){
-				delClient(client.first);
-			}			
-		}
-		std::this_thread::sleep_for( half_of_second(1) ); // 
+			
+		std::this_thread::sleep_for( half_of_second(1) ); //
 	}
+	update_fds();
+}
+
 }
